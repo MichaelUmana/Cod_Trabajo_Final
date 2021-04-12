@@ -16,6 +16,6 @@ La base de datos se construye con las siguientes variables
 9. Nacionalidad
 10. Nacionadlidad recodificada <- c(chilena,extranjera)
 11. Comuna 
-12. Comuna de acción prioritaria <- c(SI,NO)
+12. Comuna de acción prioritaria <- c(SI,NO) <- Se toma como referencia el Atlas social 2017.
 13. Tipo
 14. Tipo de agresión
