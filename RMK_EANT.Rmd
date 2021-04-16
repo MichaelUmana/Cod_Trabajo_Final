@@ -1,0 +1,274 @@
+---
+title: "RMK_EANT"
+author: "Yo"
+date: "4/13/2021"
+output: html_document
+---
+
+Se cargan los paquetes por medio de la función IPAK a partir de   https://gist.github.com/stevenworthington/3178163
+
+```{r}
+
+#Función para cargar los paquetes
+
+ipak <- function(pkg){
+    new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+    if (length(new.pkg)) 
+        install.packages(new.pkg, dependencies = TRUE)
+    sapply(pkg, require, character.only = TRUE)
+}
+
+#Se juntan los paquetes en un grupo
+
+packages <- c("showtext","tidyverse","readr","ggplot2","DataEditR","wordcloud2","lubridate","devtools","waffle","gganimate","plotly","tm","RColorBrewer","wordcloud","NLP","SnowballC")
+
+#Se llaman a las librerias todas juntas con la función Ipak
+
+ipak(packages)
+
+```
+Se carga la base de datos. Este proceso fue hecho por medio de un text mining a través del Instagram de Corporación Miles. Esta ONG Chilena sube un post con el nombre de las mujer asesinada, aparte una pequeña discripción del hecho. Esta última parte es la que códifica y posteriormente se construye la base de datos para el análisis. Este archivo al 30-03-2021 contempla 139 casos y se compone de las siguientes variables 
+
+1-Id
+2-Fecha de femicidio
+3-Año
+4-Nombre
+5-Medidas cautelares <- c(SI,NO)
+6-Quien (victimario)
+7-Nombre de pila
+8-Edad
+9-Nacionalidad
+10-Nacionadlidad recodificada <- c(chilena,extranjera)
+11-Comuna
+12-Comuna de acción prioritaria <- c(SI,NO) <- Se toma como referencia el Atlas social 2017.
+13-Tipo
+14-Tipo de agresión
+
+```{r}
+#Se carga la base de datos. 
+
+MILES_EANT_BBDD<- read_csv("MILES_EANT_BBDD - Hoja 1.csv")
+View(MILES_EANT_BBDD)
+
+#Debido al tipo de datos se espeficica que es un data frame
+
+MILES_EANT_BBDD <- as.data.frame(MILES_EANT_BBDD)
+
+#Posteriomente se menciona que las variables son de clases factor. 
+
+as.factor(MILES_EANT_BBDD$MEDIDAS_CAUTELARES)
+as.factor(MILES_EANT_BBDD$RE_NACIONALIDAD)
+as.factor(MILES_EANT_BBDD$ACCION_PRIORITARIA)
+as.factor(MILES_EANT_BBDD$QUIEN)
+as.Date(MILES_EANT_BBDD$FECHA)
+as.numeric(MILES_EANT_BBDD$EDAD)
+as.factor(MILES_EANT_BBDD$`TIPO_DE _AGRESIÓN`)
+
+```
+
+Por medio del presente código se intenta dilucidar la trayectoria del femicidio desde el 01-01-2019 al 30-03-2021. Se hace una linea de tiempo para graficar de forma animada la trayectoria. 
+
+```{r}
+
+#Se hace una base de datos con solamente las fechas de las muertes con el paquete lubridate
+
+fechas_muertes <- parse_date_time(MILES_EANT_BBDD$FECHA, orders = c("ymd", "dmy"))
+
+#Se utiliza el paque lubridate para cambiar la fecha. 
+dmy(MILES_EANT_BBDD$FECHA)
+
+#Se hace el gráfico en cuestión. 
+
+P <- MILES_EANT_BBDD %>% 
+  ggplot( aes(x= fechas_muertes, y= NUMERO)) +
+  geom_line(color="#69b3a2" , size = 1) +
+  scale_color_brewer(palette = "Pastel1") +
+  labs(title = "Trayectoria del femicidio en Chile 2019 a 2021",
+       subtitle = "Registro de femicidios del 01-01-2019 al 30-03-2021",
+       caption = "Elaboración propia",
+       x = "Fechas de muertes") +
+  ylab("Número de femicidios del 2019 - 2021")+
+  theme_minimal() +
+  transition_reveal(fechas_muertes)
+
+#Se hace la animación.
+animate(P, duration = 15, fps = 10, width = NULL , height = NULL ,renderer = gifski_renderer())
+
+#Se guarda la animación 
+anim_save("/Users/michaeluman/Desktop/Rstudio/Cursos_actuales/Presentación_Final_EANT")
+
+#Animado con plotly para ver las trayectorias de forma manual. 
+ggplotly(P)
+
+```
+Dilucidar el tipo de agresión que sufrieron las mujeres asesinadas. 
+
+```{r}
+
+#Se agrupan los diferentes tipos de agresiónes. 
+
+MILES_EANT_BBDD <- MILES_EANT_BBDD %>% mutate(RE_TIPO = case_when (`TIPO_DE _AGRESIÓN` == "ASFIXIA" | `TIPO_DE _AGRESIÓN` == "AHOGADA" | `TIPO_DE _AGRESIÓN` == "ASFIXIADA" | `TIPO_DE _AGRESIÓN` == "ESTRANGULACIÓN" | `TIPO_DE _AGRESIÓN` == "GOLPEADA Y AHORCADA" ~ "ASFIXIA",  `TIPO_DE _AGRESIÓN` == "SIN INFORMAR" ~ "SIN INFORMACIÓN", `TIPO_DE _AGRESIÓN` == "APUÑALADA" | `TIPO_DE _AGRESIÓN` == "DEGOLLADA" ~ "ARMA BLANCA" ,  `TIPO_DE _AGRESIÓN` == "DISPARO" ~ "ARMA DE FUEGO", `TIPO_DE _AGRESIÓN` == "VIOLACIÓN Y HOMICIDIO" ~ "VIOLACIÓN Y HOMICIDIO", `TIPO_DE _AGRESIÓN` == "GOLPEADA" ~ "MUERTE POR AGRESIÓN FÍSICA", `TIPO_DE _AGRESIÓN` == "LANZADA A UN RIO , VIOLADA"| `TIPO_DE _AGRESIÓN` == "SUICIDIO FEMINICIDA (CAYO DESDE UN PISO)" |`TIPO_DE _AGRESIÓN` == "ACCIDENTE" ~ "FEMICIDIOS ATÍPICOS" ))
+
+#Gráfico 
+
+ggplot(data = MILES_EANT_BBDD, aes(x = `RE_TIPO`))+
+  geom_bar(color="blue", fill=rgb(0.2,0.5,0.7,0.7))+
+  theme_minimal()+
+  coord_flip() +
+  labs(title = "¿Con que fueron asesinadas las mujeres ?",
+        subtitle = "Registro de femicidios del 01-01-2019 al 30-03-2021",
+        X = "Tipo de agresión",
+        y = "Cantidad",  
+        caption = "Elaboración propia")
+
+```
+
+Material para la regresión lineal . En este ejercicio se intenta cruzar la variable edad con las variables dummy. Estas últimas se construye por medio de las variables: nacionalidad, comuna de acción prioritaria(se toma como referencia el Atlas Social,2017 del Ministerio de Desarrollo Social) y medidas cautelares (Si existían)
+
+```{r}
+
+#Construccion de variables dummy - 
+
+  #Varible Dummy de nacionalidad. 
+
+MILES_EANT_BBDD<-MILES_EANT_BBDD %>% 
+mutate(RE_NACIONALIDAD_DUMMY = case_when( RE_NACIONALIDAD == "CHILENA" ~ 1,
+                                          RE_NACIONALIDAD == "EXTRANJERA" ~ 0))
+  #Variable dummy de accion prioritaria. 
+
+MILES_EANT_BBDD <- MILES_EANT_BBDD %>% 
+mutate(ACCION_DUMMY = case_when( ACCION_PRIORITARIA == "SI" ~ 1,
+                                 ACCION_PRIORITARIA == "NO" ~ 0 ))
+  
+  #Variable dummy de medidas cautelares. 
+
+MILES_EANT_BBDD<-MILES_EANT_BBDD %>% 
+mutate(MEDIDAS_CAUTELARES_DUMMY = case_when( MEDIDAS_CAUTELARES == "SI" ~ 1,
+                                             MEDIDAS_CAUTELARES == "NO" ~ 0 ))
+
+  #Variable Dummy de quien lo hizo
+#Se consulta que tipo de variable es QUIEN.
+class(MILES_EANT_BBDD$QUIEN)
+
+#Se transforma a factor.
+
+as.factor(MILES_EANT_BBDD$QUIEN)
+
+  #DUMMY - Se utiliza la categoría de femicidio intimo de CEPAL, N., & UNICEF. (2004). Quienes establecen el femicidio intimo  "que se da en el ámbito de lo privado, en espacios de las relaciones íntimas" pp18. Para ello se construye la variable dummy para el grupo 1 <- relaciones intimas , grupo 0 <- no relaciones íntimas. 
+
+MILES_EANT_BBDD<-MILES_EANT_BBDD %>%
+  mutate(QUIEN_DUMMY = case_when(QUIEN == "PAREJA" | QUIEN ==  "EX PAREJA" | QUIEN == "EX CONYUGE" | QUIEN == "ESPOSO" | QUIEN == "CONYUGE" | QUIEN == "CONVIVIENTE"  ~ 1 , QUIEN == "SOBRINO" | QUIEN == "SIN INFORMACION" | QUIEN == "PRIMO" | QUIEN == "PADRE" | QUIEN == "PADRASTRO" | QUIEN == "HIJO" | QUIEN == "HERMANO" ~ 0  ))
+                                          
+
+#Regresión 
+
+regresion <- lm ( EDAD ~ MEDIDAS_CAUTELARES_DUMMY + ACCION_DUMMY + QUIEN_DUMMY , data = MILES_EANT_BBDD)
+
+#Gráficos de regresión.
+summary(regresion)
+
+#Ploteo.
+plot(regresion)
+
+
+```
+Gráficos 
+
+```{r}
+# GRAFICOS 
+
+#Se hace el grafico para visualizar los femicidios en el data set. 
+
+waffle(
+  c(`2019 = 68` =68, `2020 = 59 ` = 59, `2021 = 12` =12), rows = 10, colors = c("#FD6F6F", "#93FB98", "#D5D9DD"),
+  use_glyph = "female", glyph_size = 4 ,title = 'Femicidios 2019 - 2021 en Chile', legend_pos="bottom")
+
+#Graficos de medidas cautelares.
+
+ggplot(data = MILES_EANT_BBDD, aes(x = `MEDIDAS_CAUTELARES`))+
+  geom_bar(color="blue", fill=rgb(0.2,0.5,0.7,0.7))+
+  theme_minimal()+
+  labs(title = "¿Existian medidas cautelares en los femicidios registrados?",
+        subtitle = "Registro de femicidios del 01-01-2019 al 30-03-2021",
+        X = "Medidas Cautelares",
+        y = "Cantidad",  
+        caption = "Elaboración propia")
+
+#Graficos de quien mato
+
+ggplot(data = MILES_EANT_BBDD, aes(x = `QUIEN`)) +
+  geom_bar(color="blue",width=0.5,fill=rgb(0.2,0.5,0.7,0.7)) +
+  coord_flip()+
+  theme_minimal()+
+  labs(title = "¿ Quien es el femicida?",
+       subtitle = "Registro de femicidios del 01-01-2019 al     30-03-2021",
+       x = "¿ Que lazo tiene el femicida?",
+       y = "Cantidad",
+       caption = "Elaboración propia")
+
+#Graficos de comunas accion prioritaria
+
+ggplot(data = MILES_EANT_BBDD, aes(x = `ACCION_PRIORITARIA`))+
+  geom_bar(color="blue", fill=rgb(0.2,0.5,0.7,0.7))+
+  theme_minimal()+
+  labs(title = "¿Los femicidios se cometieron en comunas de acción prioritarias?",
+       subtitle = "Elaborado a partir de Atlas Social 2017",
+       y = "Cantidad",
+       x = "Comuna de acción prioritaria",
+       caption = "Elaboración propia ")
+  
+#Histograma de las edades 
+
+ggplot(data = MILES_EANT_BBDD,aes(x = EDAD ))+
+  geom_histogram(binwidth = 10 , bins = 10, color = "blue")
+
+#Segundo histograma de las edades falta seguir la paleta de colores de las otras cosas
+
+ggplot(data = MILES_EANT_BBDD,
+       mapping = aes(x = EDAD)) +
+  geom_histogram((aes(y = ..density..)),col = "blue", fill = "blue", bins = 50, binwidth= 2 ,
+                 position = 'identity',
+                 alpha = 0.8)+
+  theme_minimal()+
+  labs(title = "Histograma de edades de victimas de femicidio del 01-01-2019 al 19-03-2021",
+       x = "Edad de fallecidas",
+       y = "Cantidad",
+       caption = "Elaboración propia")
+
+#Se saca un wordcloud -> recordar que se hizo un data set solamente con los nombres 
+
+#Carga de archivo 
+
+texto <- readLines("N.txt")
+texto <- Corpus(VectorSource(texto))
+
+#Limpieza - a donde es una lista solamente se le dice que se salte 
+
+lista <- tm_map(texto, stripWhitespace)
+
+#Se crea la wordcloud
+
+wordcloud(words = lista, min.freq = 0, max.words = 60,random.order=FALSE , random.color = FALSE)
+
+#Se saca un histograma 
+
+ggplot(data = MILES_EANT_BBDD,
+         mapping = aes(x = EDAD)) +
+    geom_histogram((aes(y = ..density..)),col = "white", fill = "black", bins = 30,
+                   position = 'identity',
+                   alpha = 0.8) +
+  stat_function(fun = dnorm, 
+                args = list(mean = mean(MILES_EANT_BBDD$EDAD), 
+                            sd = sd(MILES_EANT_BBDD$EDAD))) +
+    labs(title = "Feminicidios del 01-01-2019 al 19-03-2021",
+         x = "EDAD DE FALLECIDAS",
+         y = "CONTEO",
+         subtitle = "INFORMACIÓN RECABADA POR MEDIO DE WEB SCRAPPING",
+         caption = "ELABORACIÓN PROPIA")
+
+hist(MILES_EANT_BBDD$EDAD)
+summary(MILES_EANT_BBDD$EDAD)
+
+```
+
+
