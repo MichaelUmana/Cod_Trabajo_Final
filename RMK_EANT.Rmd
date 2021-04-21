@@ -250,7 +250,7 @@ lista <- tm_map(texto, stripWhitespace)
 
 wordcloud(words = lista, min.freq = 0, max.words = 60,random.order=FALSE , random.color = FALSE)
 
-#Se saca un histograma 
+#Se saca un histograma de las edades.
 
 ggplot(data = MILES_EANT_BBDD,
          mapping = aes(x = EDAD)) +
@@ -266,7 +266,9 @@ ggplot(data = MILES_EANT_BBDD,
          subtitle = "INFORMACIÓN RECABADA POR MEDIO DE WEB SCRAPPING",
          caption = "ELABORACIÓN PROPIA")
 
-hist(MILES_EANT_BBDD$EDAD)
+
+# Se visualizan los estadisticos descriptivos. 
+
 summary(MILES_EANT_BBDD$EDAD)
 
 ```
